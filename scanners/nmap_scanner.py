@@ -4,25 +4,29 @@ import subprocess
 
 def normalize_target(target):
     if "://" not in target:
-        return target
+        return target, None
 
     parsed = urlparse(target)
 
     if not parsed.hostname:
         raise ValueError("Invalid target URL")
 
-    return parsed.hostname
+    return parsed.hostname, parsed.port
 
 
 def run_nmap(target):
-    host = normalize_target(target)
+    host, port = normalize_target(target)
 
     command = [
         "nmap",
         "-sV",
         "-Pn",
-        host
     ]
+
+    if port:
+        command.extend(["-p", str(port)])
+
+    command.append(host)
 
     result = subprocess.run(
         command,
@@ -34,6 +38,7 @@ def run_nmap(target):
     return {
         "target": target,
         "host": host,
+        "port": port,
         "return_code": result.returncode,
         "stdout": result.stdout,
         "stderr": result.stderr,
