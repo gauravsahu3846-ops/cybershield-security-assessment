@@ -1,12 +1,11 @@
 import os
 
 from flask import Flask, jsonify
-from flask_sqlalchemy import SQLAlchemy
+from backend.extensions import db
 from dotenv import load_dotenv
 
-load_dotenv()
 
-db = SQLAlchemy()
+load_dotenv()
 
 
 def create_app():
@@ -39,3 +38,5 @@ def create_app():
 
 
 app = create_app()
+
+
