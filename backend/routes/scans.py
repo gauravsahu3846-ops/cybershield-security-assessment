@@ -3,7 +3,8 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 
 from backend.extensions import db
-from backend.models import Scan, Target
+from backend.models import Scan, ScanResult, Target
+from scanners.nmap_scanner import run_nmap
 
 
 scans_bp = Blueprint("scans", __name__, url_prefix="/api/scans")
@@ -50,15 +51,74 @@ def create_scan():
     db.session.add(scan)
     db.session.commit()
 
+    try:
+        scan.status = "running"
+        scan.started_at = datetime.utcnow()
+        db.session.commit()
+
+        result = run_nmap(target.value)
+
+        if result["return_code"] != 0:
+            scan.status = "failed"
+            scan.completed_at = datetime.utcnow()
+            db.session.commit()
+
+            return jsonify(
+                {
+                    "status": "error",
+                    "message": "Nmap scan failed",
+                    "scan_id": scan.id,
+                    "error": result["stderr"]
+                }
+            ), 500
+
+        for item in result["results"]:
+            scan_result = ScanResult(
+                scan_id=scan.id,
+                host=item["host"],
+                protocol=item["protocol"],
+                port=item["port"],
+                state=item["state"],
+                service=item["service"],
+                confidence=item["confidence"]
+            )
+
+            db.session.add(scan_result)
+
+        scan.status = "completed"
+        scan.completed_at = datetime.utcnow()
+
+        db.session.commit()
+
+    except Exception as exc:
+        db.session.rollback()
+
+        scan.status = "failed"
+        scan.completed_at = datetime.utcnow()
+
+        db.session.commit()
+
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Scan execution failed",
+                "scan_id": scan.id,
+                "error": str(exc)
+            }
+        ), 500
+
     return jsonify(
         {
             "status": "success",
-            "message": "Scan created successfully",
+            "message": "Scan completed successfully",
             "scan": {
                 "id": scan.id,
                 "target_id": scan.target_id,
                 "scan_type": scan.scan_type,
-                "status": scan.status
+                "status": scan.status,
+                "started_at": scan.started_at,
+                "completed_at": scan.completed_at,
+                "results_count": len(result["results"])
             }
         }
     ), 201
