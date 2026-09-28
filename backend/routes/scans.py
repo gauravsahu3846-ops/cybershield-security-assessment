@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, request
 
 from backend.extensions import db
 from backend.models import Scan, ScanResult, Target
+from backend.services.finding_engine import analyze_scan_results
 from scanners.nmap_scanner import run_nmap
 
 
@@ -85,6 +86,10 @@ def create_scan():
 
             db.session.add(scan_result)
 
+        db.session.commit()
+
+        findings = analyze_scan_results(scan.id)
+
         scan.status = "completed"
         scan.completed_at = datetime.utcnow()
 
@@ -118,7 +123,8 @@ def create_scan():
                 "status": scan.status,
                 "started_at": scan.started_at,
                 "completed_at": scan.completed_at,
-                "results_count": len(result["results"])
+                "results_count": len(result["results"]),
+                "findings_count": len(findings)
             }
         }
     ), 201

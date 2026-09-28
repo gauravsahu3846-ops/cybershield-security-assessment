@@ -3,9 +3,10 @@ import os
 from flask import Flask, jsonify
 from dotenv import load_dotenv
 
-from backend.extensions import db
+from backend.extensions import db, migrate
 from backend.routes.targets import targets_bp
 from backend.routes.scans import scans_bp
+from backend.routes.findings import findings_bp
 
 
 load_dotenv()
@@ -27,9 +28,11 @@ def create_app():
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     db.init_app(app)
+    migrate.init_app(app, db)
 
     app.register_blueprint(targets_bp)
     app.register_blueprint(scans_bp)
+    app.register_blueprint(findings_bp)
 
     @app.get("/health")
     def health():
@@ -44,5 +47,3 @@ def create_app():
 
 
 app = create_app()
-
-
