@@ -30,3 +30,8 @@ reports/generated/
 # Temporary files
 tmp/
 temp/
+
+# Dashboard development backups
+frontend/static/css/*.backup
+frontend/static/css/*.before-*
+frontend/static/js/*.broken-backup
